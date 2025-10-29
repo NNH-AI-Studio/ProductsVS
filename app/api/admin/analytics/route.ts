@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/auth"
 import { createClient } from "@/lib/supabase/server"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("admin_token")?.value
@@ -19,31 +21,29 @@ export async function GET(request: NextRequest) {
 
     const [
       totalComparisons,
-      pendingComparisons,
-      approvedComparisons,
-      rejectedComparisons,
+      publishedComparisons,
+      draftComparisons,
       todayComparisons,
       weekComparisons,
       monthComparisons,
       categoryStats,
     ] = await Promise.all([
-      supabase.from("comparisons_dynamic").select("id", { count: "exact", head: true }),
-      supabase.from("comparisons_dynamic").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      supabase.from("comparisons_dynamic").select("id", { count: "exact", head: true }).eq("status", "approved"),
-      supabase.from("comparisons_dynamic").select("id", { count: "exact", head: true }).eq("status", "rejected"),
+      supabase.from("comparisons").select("id", { count: "exact", head: true }),
+      supabase.from("comparisons").select("id", { count: "exact", head: true }).eq("is_published", true),
+      supabase.from("comparisons").select("id", { count: "exact", head: true }).eq("is_published", false),
       supabase
-        .from("comparisons_dynamic")
+        .from("comparisons")
         .select("id", { count: "exact", head: true })
         .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
       supabase
-        .from("comparisons_dynamic")
+        .from("comparisons")
         .select("id", { count: "exact", head: true })
         .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       supabase
-        .from("comparisons_dynamic")
+        .from("comparisons")
         .select("id", { count: "exact", head: true })
         .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from("comparisons_dynamic").select("category"),
+      supabase.from("comparisons").select("category_id"),
     ])
 
     const categoryCounts: Record<string, number> = {}
@@ -56,16 +56,15 @@ export async function GET(request: NextRequest) {
 
     const analytics = {
       total: totalComparisons.count || 0,
-      pending: pendingComparisons.count || 0,
-      approved: approvedComparisons.count || 0,
-      rejected: rejectedComparisons.count || 0,
+      published: publishedComparisons.count || 0,
+      drafts: draftComparisons.count || 0,
       today: todayComparisons.count || 0,
       thisWeek: weekComparisons.count || 0,
       thisMonth: monthComparisons.count || 0,
       byCategory: categoryCounts,
-      approvalRate:
+      publishRate:
         totalComparisons.count && totalComparisons.count > 0
-          ? Math.round(((approvedComparisons.count || 0) / totalComparisons.count) * 100)
+          ? Math.round(((publishedComparisons.count || 0) / totalComparisons.count) * 100)
           : 0,
     }
 

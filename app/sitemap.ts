@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next"
 import { comparisons } from "@/lib/comparisons-data"
 import { createClient } from "@/lib/supabase/server"
 
+export const dynamic = 'force-dynamic'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://productsvs.com"
 
@@ -77,14 +79,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  // Dynamic comparisons from database (approved only)
+  // Dynamic comparisons from database (published only)
   let dynamicComparisons: MetadataRoute.Sitemap = []
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
-      .from("comparisons_dynamic")
+      .from("comparisons")
       .select("slug, updated_at")
-      .eq("status", "approved")
+      .eq("is_published", true)
 
     if (!error && data) {
       dynamicComparisons = data.map((comparison) => ({

@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getAdminFromToken } from "@/lib/auth"
 import { getPendingComparisons } from "@/lib/db/comparisons"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await getAdminFromToken()
